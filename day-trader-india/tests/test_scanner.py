@@ -366,10 +366,45 @@ class Orb(unittest.TestCase):
         self.assertEqual(hits, [])
         self.assertIn("429", failed["DEMO"])
 
-    def test_a_missing_bar_makes_a_chart_unusable(self):
-        s = bars_series("2026-10-20", [10, 10.2, 10.1, None, 10.5, 10.6, 10.7, 10.8, 10.9])
-        bars = scan.session_bars(s, D(2026, 10, 20), DT(2026, 10, 20, 10, 15))
-        self.assertFalse(scan.usable(bars, D(2026, 10, 20), DT(2026, 10, 20, 10, 15), 3))
+    def chart(self, closes, cut=(10, 15)):
+        """A Wed 2026-10-21 chart from 9:15 (None = a bar Yahoo did not send) -> (bars, day, cutoff)."""
+        day, cutoff = D(2026, 10, 21), DT(2026, 10, 21, *cut)
+        return scan.session_bars(bars_series("2026-10-21", closes), day, cutoff), day, cutoff
+
+    def test_a_missing_opening_range_bar_makes_a_chart_unusable(self):
+        bars, day, cut = self.chart([10, None, 10.1, 10.3, 10.5, 10.6, 10.7, 10.8, 10.9, 11, 11.1, 11.2])
+        self.assertEqual(scan.gaps(bars, day, cut), [1])
+        self.assertFalse(scan.usable(bars, day, cut, 3))
+
+    def test_one_or_two_missing_bars_after_the_range_are_kept(self):
+        # Yahoo's free NSE feed drops the odd bar of a stock that certainly traded
+        closes = [10, 10.2, 10.1, None, 10.5, 10.6, 10.7, 10.8, 10.9, 11, 11.1, 11.2]
+        bars, day, cut = self.chart(closes)
+        self.assertEqual(scan.gaps(bars, day, cut), [3])
+        self.assertTrue(scan.usable(bars, day, cut, 3))
+        two = [10, 10.2, 10.1, None, None, 10.6, 10.7, 10.8, 10.9, 11, 11.1, 11.2] + [11.3] * 12
+        bars, day, cut = self.chart(two, (11, 15))                  # 24 slots: 2 missing is under 10 %
+        self.assertTrue(scan.usable(bars, day, cut, 3))
+
+    def test_a_long_hole_or_too_many_gaps_is_still_unusable(self):
+        three = [10, 10.2, 10.1, None, None, None] + [10.6] * 18     # 15 minutes with nothing: a halt?
+        bars, day, cut = self.chart(three, (11, 15))
+        self.assertEqual(scan.gaps(bars, day, cut), [3, 4, 5])
+        self.assertFalse(scan.usable(bars, day, cut, 3))
+        spread = [10, 10.2, 10.1] + [None, 10.5, 10.6] * 7                # 7 of 24 missing: too many
+        bars, day, cut = self.chart(spread, (11, 15))
+        self.assertFalse(scan.usable(bars, day, cut, 3))
+        self.assertTrue(scan.usable(bars, day, cut, 3, max_pct=30))
+        bars, day, cut = self.chart([10, 10.2, 10.1, None] + [10.5] * 8)
+        self.assertFalse(scan.usable(bars, day, cut, 3, max_run=0))     # the old, strict rule
+        self.assertFalse(scan.usable([], day, cut, 3))
+
+    def test_a_breakout_after_a_gap_keeps_its_real_bar_number(self):
+        # range 9:15-9:25 (high 10.3); 9:30 missing; 9:35 closes 10.5 above it
+        s = bars_series("2026-10-21", [10, 10.2, 10.1, None, 10.5, 10.6, 10.7, 10.8, 10.9, 11, 11.1, 11.2])
+        hits, counts, _ = scan.scan_orb({"X": s}, ["X"], D(2026, 10, 21), DT(2026, 10, 21, 10, 15), 15, 0, 0)
+        self.assertEqual((counts["scanned"], counts["with_gaps"], counts["unusable"]), (1, 1, 0))
+        self.assertEqual((hits[0]["bar_start"], hits[0]["bar_index"], hits[0]["at"]), ("09:35", 4, "9:40 AM"))
 
     def test_a_30_minute_range_and_bars_after_the_close(self):
         # Fri Nov 27 2026, a normal NSE day (US markets close early that day; NSE does not)

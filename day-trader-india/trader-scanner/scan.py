@@ -44,7 +44,9 @@ orb       Opening-range breakouts, 5-minute bars. The range is the first
           bar's close time. Stage 2 fetches at most --max-confirm (200) charts,
           the most traded candidates first (price x volume so far), and says
           so when it stops short. A chart is usable only when every 5-minute
-          bar from 9:15 to the cutoff is there (a missing bar is a halt or no
+          bar of the opening range is there and, after it, no more than 2 bars in
+          a row and 10 % of the day's bars are missing (Yahoo's free NSE feed
+          drops the odd bar; a longer hole is a halt, a freeze or no
           trades). Floors: --min-price 50 (last close), --min-volume 0.
 
 Bars: null closes are dropped, a bar off the 5-minute grid (the live tick,
@@ -571,16 +573,51 @@ def session_bars(series, day, cutoff):
     return [out[k] for k in sorted(out)]
 
 
-def usable(bars, day, cutoff, n_range):
-    """Every slot from 9:15 to the cutoff is there, and at least the range."""
+MAX_GAP_RUN = 2      # missing 5-minute bars in a row a chart may have after the range (3 = 15 min: a halt?)
+MAX_GAP_PCT = 10     # and at most this share of the day's bars missing in all
+
+
+def expected_slots(day, cutoff):
+    """How many 5-minute bars of `day` are complete by `cutoff`."""
     want = int((cutoff - slot(day, 0)).total_seconds() // (BAR_MIN * 60))
     s = session(day)
     if s:
         want = min(want, int((datetime.datetime.combine(day, s[1]) - slot(day, 0)).total_seconds()
                              // (BAR_MIN * 60)))
-    if want < n_range or len(bars) != want:
+    return want
+
+
+def gaps(bars, day, cutoff):
+    """The slots (0 = 9:15) with no bar, from 9:15 up to the cutoff."""
+    have = {int((b["start"] - slot(day, 0)).total_seconds() // (BAR_MIN * 60)) for b in bars}
+    return [k for k in range(expected_slots(day, cutoff)) if k not in have]
+
+
+def usable(bars, day, cutoff, n_range, max_run=MAX_GAP_RUN, max_pct=MAX_GAP_PCT):
+    """The whole opening range is there, and after it only a few bars are missing.
+
+    Yahoo's free NSE feed drops the odd 5-minute bar of stocks that certainly
+    traded, so a chart may miss up to max_pct percent of the day's bars, never
+    more than max_run in a row (a longer hole looks like a halt or a circuit
+    freeze), and never a bar of the opening range."""
+    want = expected_slots(day, cutoff)
+    if want < n_range or not bars:
         return False
-    return all(b["start"] == slot(day, k) for k, b in enumerate(bars))
+    if any(b["start"] != slot(day, int((b["start"] - slot(day, 0)).total_seconds() // (BAR_MIN * 60)))
+           for b in bars):
+        return False                          # off the 5-minute grid
+    missing = gaps(bars, day, cutoff)
+    if any(k < n_range for k in missing):
+        return False
+    if len(missing) > max(1, int(want * max_pct / 100.0)):
+        return False
+    run = longest = 0
+    prev = None
+    for k in missing:
+        run = run + 1 if prev is not None and k == prev + 1 else 1
+        longest = max(longest, run)
+        prev = k
+    return longest <= max_run
 
 
 def orb_candidate(bars, n_range):
@@ -597,10 +634,11 @@ def orb_hit(bars, n_range):
         return None
     oh = max(b["h"] for b in rng)
     ol = min(b["l"] for b in rng)
-    for k in range(n_range, len(bars)):
-        b = bars[k]
+    first = bars[0]["start"]
+    for b in bars[n_range:]:
         if b["c"] > oh:
             closes_at = b["start"] + datetime.timedelta(minutes=BAR_MIN)
+            k = int((b["start"] - first).total_seconds() // (BAR_MIN * 60))   # the slot, not the list position
             return {"price": round(b["c"], 2), "at": clock_label(closes_at),
                     "bar_start": b["start"].strftime("%H:%M"), "bar_index": k,
                     "or_high": round(oh, 2), "or_low": round(ol, 2),
@@ -654,7 +692,7 @@ def scan_orb(stage1, symbols, day, cutoff, or_minutes, min_price=0.0, min_volume
     traded candidates (price x volume so far) are confirmed; the rest are counted as unconfirmed.
     Returns (hits, counts, failed {sym: why})."""
     n_range = or_minutes // BAR_MIN
-    counts = {"requested": len(symbols), "fetched": 0, "unusable": 0, "illiquid": 0, "scanned": 0,
+    counts = {"requested": len(symbols), "fetched": 0, "unusable": 0, "with_gaps": 0, "illiquid": 0, "scanned": 0,
               "candidates": 0, "confirmed": 0, "unconfirmed": 0}
     hits, failed, cands = [], {}, []
     for sym in symbols:
@@ -671,6 +709,8 @@ def scan_orb(stage1, symbols, day, cutoff, or_minutes, min_price=0.0, min_volume
             counts["illiquid"] += 1
             continue
         counts["scanned"] += 1
+        if gaps(bars, day, cutoff):
+            counts["with_gaps"] += 1
         if orb_candidate(bars, n_range):
             cands.append((sym, bars, bars[-1]["c"] * vol))
     counts["candidates"] = len(cands)
@@ -688,7 +728,7 @@ def scan_orb(stage1, symbols, day, cutoff, or_minutes, min_price=0.0, min_volume
                 continue
             full = session_bars(s2, day, cutoff)
             if not usable(full, day, cutoff, n_range):
-                failed[sym] = "the v8 chart has a missing bar"
+                failed[sym] = "the v8 chart is missing opening-range bars or too many bars"
                 continue
         counts["confirmed"] += 1
         h = orb_hit(full, n_range)
@@ -973,6 +1013,11 @@ def cmd_orb(a):
              "{:,}".format(counts["scanned"]),
              (" (%s under the price / volume floor)" % "{:,}".format(counts["illiquid"])) if counts["illiquid"] else "",
              "{:,}".format(counts["candidates"]), "{:,}".format(counts["confirmed"])))
+    if counts["unusable"] or counts["with_gaps"]:
+        print("%s chart%s left out (a missing opening-range bar, or a hole of 3+ bars: a halt or no data); "
+              "%s usable chart%s had 1 or 2 bars missing from Yahoo here and there and were kept."
+              % ("{:,}".format(counts["unusable"]), "" if counts["unusable"] == 1 else "s",
+                 "{:,}".format(counts["with_gaps"]), "" if counts["with_gaps"] == 1 else "s"))
     if counts["unconfirmed"]:
         print("PARTIAL: %s more candidates were not checked (only the %s most traded are; --max-confirm 0 "
               "checks all)." % ("{:,}".format(counts["unconfirmed"]), "{:,}".format(a.max_confirm)))
