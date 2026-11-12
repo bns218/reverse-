@@ -291,7 +291,7 @@ class Rules(unittest.TestCase):
         q["DEMO"]["price"] = 358.10
         rings, st = self.at("2026-10-19 11:30", rules, st, q)
         self.assertEqual([r["id"] for r in rings], ["demo-plan-stop"])
-        self.assertIn("DEMO is ₹358.10: at or below your stop ₹358.3 (plan stop: opening-range midpoint)",
+        self.assertIn("DEMO is ₹358.10: at or below your stop ₹358.30 (plan stop: opening-range midpoint)",
                       rings[0]["message"])
         q["DEMO"]["price"] = 370.10
         self.assertEqual([r["id"] for r in self.at("2026-10-19 12:00", rules, st, q)[0]], ["demo-plan-target"])

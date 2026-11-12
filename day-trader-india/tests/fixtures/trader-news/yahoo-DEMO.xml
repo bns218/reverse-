@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<rss version="2.0">
+  <channel>
+    <title>Yahoo! Finance: DEMO.NS News</title>
+    <link>http://finance.yahoo.com/q/h?s=DEMO.NS</link>
+    <language>en-IN</language>
+    <item>
+      <description>Demo Industries shares rose in early trade ahead of its second-quarter results due later this week.</description>
+      <guid isPermaLink="false">demo-0001</guid>
+      <link>https://example.invalid/news/demo-industries-q2-results-preview</link>
+      <pubDate>Mon, 19 Oct 2026 03:04:00 +0000</pubDate>
+      <title>Demo Industries Q2 results preview: net profit seen up 12%</title>
+    </item>
+    <item>
+      <description>The brokerage raised its target price on Demo Industries (DEMO) and kept a buy rating.</description>
+      <guid isPermaLink="false">demo-0002</guid>
+      <link>https://example.invalid/news/brokerage-raises-demo-target</link>
+      <pubDate>Fri, 16 Oct 2026 11:40:00 +0000</pubDate>
+      <title>Brokerage raises Demo Industries target price to Rs 410</title>
+    </item>
+    <item>
+      <description>Benchmarks ended flat as FII selling offset gains in banks.</description>
+      <guid isPermaLink="false">demo-0003</guid>
+      <link>https://example.invalid/news/nifty-sensex-flat</link>
+      <pubDate>Thu, 01 Oct 2026 10:30:00 +0000</pubDate>
+      <title>Nifty, Sensex end flat; FII outflows continue</title>
+    </item>
+  </channel>
+</rss>

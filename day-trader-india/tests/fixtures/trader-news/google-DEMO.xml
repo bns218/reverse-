@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>"Demo Industries" when:3d - Google News</title>
+    <link>https://news.google.com/search?q=%22Demo+Industries%22+when:3d&amp;hl=en-IN&amp;gl=IN&amp;ceid=IN:en</link>
+    <language>en-IN</language>
+    <item>
+      <title>Demo Industries bags order worth Rs 450 crore from a state utility - Example Business Daily</title>
+      <link>https://news.google.com/rss/articles/demo-order-win</link>
+      <guid isPermaLink="false">gn-demo-0001</guid>
+      <pubDate>Mon, 19 Oct 2026 02:10:00 GMT</pubDate>
+      <description>&lt;a href="https://news.google.com/rss/articles/demo-order-win"&gt;Demo Industries bags order worth Rs 450 crore from a state utility&lt;/a&gt;&amp;nbsp;&amp;nbsp;&lt;font color="#6f6f6f"&gt;Example Business Daily&lt;/font&gt;</description>
+      <source url="https://example.invalid">Example Business Daily</source>
+    </item>
+    <item>
+      <title>Demo Industries Q2 results preview: net profit seen up 12% - Example Markets</title>
+      <link>https://news.google.com/rss/articles/demo-q2-preview</link>
+      <guid isPermaLink="false">gn-demo-0002</guid>
+      <pubDate>Mon, 19 Oct 2026 03:20:00 GMT</pubDate>
+      <description>Demo Industries Q2 results preview</description>
+      <source url="https://example.invalid">Example Markets</source>
+    </item>
+  </channel>
+</rss>
