@@ -5,15 +5,15 @@ import unittest
 
 from _load import ROOT
 
-# v2, the day-trading pack: the eleven folders the reel's repo card shows
+# the India edition: the eleven skill folders (trader-deals replaces the US Congress tracker)
 SKILLS = ["trader-scanner", "trader-news", "trader-entry", "trader-exit", "trader-timemachine",
           "trader-risk", "trader-budget", "trader-broker", "trader-alerts", "trader-analyst",
-          "trader-pelosi"]
-ABOUT = ("11 Claude skills for day trading: scan thousands of charts, track breaking news, time every "
-         "entry and exit, and replay every outcome before you risk a dollar.")
+          "trader-deals"]
+ABOUT = ("11 Claude skills for day trading on NSE and BSE: scan thousands of charts, track breaking news, "
+         "time every entry and exit, and replay every outcome before you risk a rupee.")
 # skills on the way to an order carry the safety block
 ORDER_PATH = ["trader-scanner", "trader-entry", "trader-exit", "trader-timemachine", "trader-budget",
-              "trader-pelosi", "trader-risk", "trader-broker", "trader-alerts"]
+              "trader-deals", "trader-risk", "trader-broker", "trader-alerts"]
 V1_ONLY = ["trader-copycat", "trader-screener", "trader-tax", "trader-rebalance"]
 
 
@@ -60,23 +60,22 @@ class Repo(unittest.TestCase):
     def test_plugin_manifest_points_at_the_root_skills(self):
         with open(os.path.join(ROOT, ".claude-plugin", "plugin.json")) as fh:
             plugin = json.load(fh)
-        self.assertEqual(plugin["name"], "day-trader-skill")
+        self.assertEqual(plugin["name"], "day-trader-india")
         self.assertEqual(plugin["skills"], "./")
         self.assertEqual(plugin["description"], ABOUT)
         with open(os.path.join(ROOT, ".claude-plugin", "marketplace.json")) as fh:
             market = json.load(fh)
-        self.assertEqual(market["name"], "day-trader-skill")
-        self.assertEqual(market["plugins"][0]["name"], "day-trader-skill")
+        self.assertEqual(market["name"], "day-trader-india")
+        self.assertEqual(market["plugins"][0]["name"], "day-trader-india")
 
-    def test_readme_carries_the_reel_copy(self):
+    def test_readme(self):
         with open(os.path.join(ROOT, "README.md"), encoding="utf-8") as fh:
             readme = " ".join(fh.read().split())
-        self.assertTrue(readme.startswith("# The Day Trader skill"))
+        self.assertTrue(readme.startswith("# The Day Trader skill, India edition"))
         for line in (ABOUT,
-                     "https://github.com/Jakeschincariol/day-trader-skill install skill",
-                     "/plugin marketplace add Jakeschincariol/day-trader-skill",
-                     "/plugin install day-trader-skill@day-trader-skill",
-                     "## Fine print"):
+                     "https://github.com/Jakeschincariol/day-trader-skill",     # credit the original
+                     "cp -r day-trader-india/trader-* .claude/skills/",
+                     "SEBI-registered", "## Fine print"):
             self.assertIn(line, readme)
         for s in SKILLS:
             self.assertIn("/" + s, readme, s)
@@ -89,6 +88,17 @@ class Repo(unittest.TestCase):
             if not rel.startswith(os.path.join("tests", "fixtures")):  # fixtures are real data, kept as published
                 self.assertNotIn("\u2014", text, rel)
             self.assertNotIn("jakeschincariol" + "@" + "gmail.com", text, rel)  # built, so this file passes too
+
+    def test_no_us_market_leftovers(self):
+        for path in every_text_file():
+            rel = os.path.relpath(path, ROOT)
+            if rel.startswith("tests" + os.sep) or rel == "README.md":
+                continue
+            with open(path, encoding="utf-8", errors="replace") as fh:
+                text = fh.read()
+            for old in ("NYSE", "New York", "Alpaca", "place_stock_order", "pdt_guard", "_usd", "SEC EDGAR",
+                        "sec_user_agent", "Pelosi", "trader-pelosi", "Thanksgiving"):
+                self.assertNotIn(old, text, "%s: %s" % (rel, old))
 
     def test_no_v1_only_skill_is_left_behind(self):
         for path in every_text_file():

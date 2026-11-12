@@ -1,0 +1,23 @@
+{
+  "as_of": "2026-10-19",
+  "companies": [
+    {
+      "ticker": "DEMO",
+      "name": "Demo Industries Limited (fictional)",
+      "currency": "INR",
+      "period_end": "2026-09-30",
+      "fiscal": "Q2 FY27",
+      "revenue_ttm": 207200000000.0,
+      "net_income_ttm": 21700000000.0,
+      "eps_ttm": 43.4,
+      "revenue_growth_yoy": 13.2,
+      "eps_growth_yoy": 22.9,
+      "net_income_growth_yoy": 22.9,
+      "gross_margin": 40.6,
+      "operating_margin": 15.9,
+      "net_margin": 10.9,
+      "source": "Yahoo Finance fundamentals time series"
+    }
+  ],
+  "note": "An example of --metrics output, for a fictional company (synthetic test data)."
+}

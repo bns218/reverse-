@@ -375,7 +375,7 @@ class SkillDoc(unittest.TestCase):
         with open(os.path.join(ROOT, "trader-risk", "SKILL.md"), encoding="utf-8") as fh:
             text = fh.read()
         self.assertTrue(text.startswith("---\nname: trader-risk\n"))
-        low = " ".join(text.lower().split())
+        low = " ".join(text.replace("${CLAUDE_SKILL_DIR}", "").lower().split())
         for must in ("pass", "block", "max_loss_per_trade_inr", "circuit", "mis", "14:45", "whole shares",
                      "not financial advice", "## safety"):
             self.assertIn(must, low)

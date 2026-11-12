@@ -1,0 +1,11 @@
+{
+  "source": "An example split, not a recommendation: five large NSE stocks with made-up weights",
+  "as_of": "2026-06-30",
+  "weights": [
+    {"ticker": "RELIANCE", "name": "Reliance Industries", "weight": 30.67},
+    {"ticker": "HDFCBANK", "name": "HDFC Bank", "weight": 23.85},
+    {"ticker": "ICICIBANK", "name": "ICICI Bank", "weight": 17.56},
+    {"ticker": "INFY", "name": "Infosys", "weight": 15.11},
+    {"ticker": "TCS", "name": "Tata Consultancy Services", "weight": 12.80}
+  ]
+}
