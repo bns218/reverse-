@@ -4,7 +4,7 @@ enter, so you know when to get out. Standard library only. Long side only.
 It never places an order.
 
     python3 exit.py plan                                    # from trader/entry.json: or-mid stop, 2R target
-    python3 exit.py plan --stop or-mid --target 1R --write  # the demo: stop 358.30, target 370.05
+    python3 exit.py plan --stop or-mid --target 1R --write  # the demo: stop 358.30, target 370.10
     python3 exit.py plan --symbol DEMO --entry 364.18 --or-high 362.18 --or-low 354.47
     python3 exit.py plan --stop atr:1.5 --offline DEMO.NS.json # ATR needs the session's bars
     python3 exit.py plan --symbol INFY --entry 1490.25 --setup level --stop pct:1
@@ -25,7 +25,8 @@ Stops (a long's stop rounds DOWN to the tick, away from the entry):
              bars by then it averages all of them and says so.
   A level setup has no opening-range default: give a stop.
 
-Targets (round half up to the tick):
+Targets (an R target rounds UP to the tick, so the reward is never less than
+R times the risk; a price target rounds half up to the tick):
   2R (default), 1R, 1.5R ...   entry + R x risk, where risk = entry - stop
   price:X                      your price
 
@@ -55,7 +56,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from decimal import Decimal, InvalidOperation, ROUND_FLOOR, ROUND_HALF_UP
+from decimal import Decimal, InvalidOperation, ROUND_CEILING, ROUND_FLOOR, ROUND_HALF_UP
 
 UA = "Mozilla/5.0 (compatible; day-trader-skill/2.0; +https://github.com/Jakeschincariol/day-trader-skill)"
 BACKOFF = 5.0
@@ -324,7 +325,7 @@ def compute(entry, stop_rule, stop_param, target_rule, target_param, or_high=Non
                         % (money(risk), money(floor_risk.quantize(CENT, rounding=ROUND_HALF_UP)), money(e)))
     if target_rule == "r":
         raw_t = e + target_param * risk
-        target = to_tick(raw_t, tick_for(raw_t, tick), ROUND_HALF_UP)
+        target = to_tick(raw_t, tick_for(raw_t, tick), ROUND_CEILING)   # up, so the reward is never under R
         t_label = r_label(target_param)
     else:
         target = to_tick(target_param, tick_for(target_param, tick), ROUND_HALF_UP)

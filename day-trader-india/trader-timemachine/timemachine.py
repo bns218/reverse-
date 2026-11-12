@@ -10,7 +10,7 @@ session in the data.
     python3 timemachine.py run --until 15:15            # stop each replay at this time (default: plan flat_by)
     python3 timemachine.py run --seed 7 --replays 20000 --json
     python3 timemachine.py run --symbol DEMO --date 2026-10-19 --entry 364.18 \\
-        --stop 358.30 --target 370.05 --entry-time "10:00 AM"
+        --stop 358.30 --target 370.10 --entry-time "10:00 AM"
     python3 timemachine.py chart                        # ASCII fan chart of the replays
     python3 timemachine.py chart --from trader/timemachine.json
 
@@ -436,9 +436,18 @@ def tick_away(x, long):
     return round((math.floor(n) if long else math.ceil(n)) * tick_size(x), 2)
 
 
-def tick_near(x):
-    """Round a target to the nearest tick, half up."""
-    return round(math.floor(round(x / tick_size(x), 4) + 0.5) * tick_size(x), 2)
+def tick_beyond(x, long):
+    """Round an R target to the tick, away from the entry (up for a buy), like trader-exit:
+    the reward is never less than R times the risk."""
+    n = round(x / tick_size(x), 4)
+    return round((math.ceil(n) if long else math.floor(n)) * tick_size(x), 2)
+
+
+def nominal_r(r):
+    """1.0068 -> 1.0: a target rounded to the exchange tick is still "1R". Snaps to the
+    nearest half R when it is within tick slack (0.02R), else two decimals."""
+    half = round(r * 2) / 2.0
+    return half if half > 0 and abs(r - half) < 0.02 else round(r, 2)
 
 
 def opening_range(D, n):
@@ -474,7 +483,7 @@ def history_replay(sessions, rule, last, side="buy"):
         risk = (e - s) if long else (s - e)
         if risk <= 0:
             continue
-        t = tick_near(e + rule["target_r"] * risk) if long else tick_near(e - rule["target_r"] * risk)
+        t = tick_beyond(e + rule["target_r"] * risk, True) if long else tick_beyond(e - rule["target_r"] * risk, False)
         oc = None
         for b in D[kk + 1:last + 1]:
             if (b["l"] <= s) if long else (b["h"] >= s):
@@ -593,7 +602,7 @@ def normalize_plan(raw, src="flags"):
         "symbol": sym, "side": side, "date": date, "setup": str(raw.get("setup") or "orb"),
         "entry": entry, "entry_time": clock12(OPEN_MIN + 5 * (k + 1)), "entry_bar": k,
         "stop": stop, "target": target, "risk_per_share": round(risk, 2),
-        "target_r": round(((target - entry) if long else (entry - target)) / risk, 2),
+        "target_r": nominal_r(((target - entry) if long else (entry - target)) / risk),
         "opening_range": dict(orng, minutes=or_min) if isinstance(orng, dict) else {"minutes": or_min},
         "stop_rule": str(raw.get("stop_rule") or "auto"), "interval": "5m",
         "flat_by": raw.get("flat_by"), "from": src,
@@ -657,7 +666,7 @@ def verdict(mc):
             _until12(mc), _until12(mc))
     d, share, even = lv
     r = mc.get("r_at_target") or 1.0
-    one_r = abs(r - 1.0) < 0.005
+    one_r = nominal_r(r) == 1.0
     if abs(d) < COIN_FLIP:
         head = "Close to a coin flip" if one_r else "Close to break-even"
     elif abs(d) < STRONG:
@@ -668,7 +677,7 @@ def verdict(mc):
     if one_r:
         return "%s: %s." % (head, odds)
     return ("%s: at %gR the target has to come first in %.0f %% of the replays that hit one side; "
-            "it did in %.0f %% (%s)." % (head, round(r, 2), 100 * even, 100 * share, odds))
+            "it did in %.0f %% (%s)." % (head, nominal_r(r), 100 * even, 100 * share, odds))
 
 
 def verdict_notes(mc):

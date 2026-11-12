@@ -1,0 +1,12 @@
+{
+  "source": "Test fixture: five large NSE stocks with made-up weights (not a recommendation, not anyone's real holdings)",
+  "as_of": "2026-06-30",
+  "note": "Raw weights that do not add up to 100: the tool renormalises them.",
+  "weights": [
+    {"ticker": "RELIANCE", "name": "Reliance Industries", "weight": 22.04},
+    {"ticker": "HDFCBANK", "name": "HDFC Bank", "weight": 17.14},
+    {"ticker": "ICICIBANK", "name": "ICICI Bank", "weight": 12.62},
+    {"ticker": "INFY", "name": "Infosys", "weight": 10.86},
+    {"ticker": "TCS", "name": "Tata Consultancy Services", "weight": 9.20}
+  ]
+}

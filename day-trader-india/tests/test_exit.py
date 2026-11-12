@@ -24,8 +24,8 @@ REEL_PLAN = {"created_by": "trader-exit", "symbol": "DEMO", "side": "buy", "date
              "entry": 364.18, "entry_time": "10:00 AM", "entry_bar": 8, "interval": "5m",
              "opening_range": {"high": 362.18, "low": 354.47, "minutes": 15},
              "stop": 358.3, "stop_rule": "or_mid", "stop_label": "opening-range midpoint",
-             "target": 370.05, "target_r": 1.0, "target_label": "1R (one times the risk)",
-             "risk_per_share": 5.88, "reward_risk": 1.0, "flat_by": "15:15"}
+             "target": 370.1, "target_r": 1.0, "target_label": "1R (one times the risk)",
+             "risk_per_share": 5.88, "reward_risk": 1.01, "flat_by": "15:15"}
 REEL_ENTRY = {"created_by": "trader-entry", "symbol": "DEMO", "setup": "orb", "side": "buy", "date": "2026-10-19",
               "status": "triggered", "time": "10:00 AM", "bar_start": "09:55", "bar_index": 8, "price": 364.18,
               "level": 362.18, "interval": "5m", "opening_range": {"high": 362.18, "low": 354.47, "minutes": 15},
@@ -113,7 +113,7 @@ class Math(unittest.TestCase):
 
     def test_nse_ticks(self):
         p = c(364.18, "or-mid", "1R", tick=None)                    # 250 to 1,000: 0.05
-        self.assertEqual((p["stop"], p["risk"], p["target"]), (Decimal("358.30"), Decimal("5.88"), Decimal("370.05")))
+        self.assertEqual((p["stop"], p["risk"], p["target"]), (Decimal("358.30"), Decimal("5.88"), Decimal("370.10")))
         self.assertIn("rounded down to the 0.05 tick", p["stop_detail"])
         self.assertEqual(c(364.18, "or-mid", tick=None)["target"], Decimal("375.95"))
         self.assertEqual(c(364.18, "or-low", tick=None)["stop"], Decimal("354.45"))  # 354.47 is off the tick
@@ -192,7 +192,7 @@ class Cli(unittest.TestCase):
         for k, v in REEL_PLAN.items():
             self.assertEqual(p[k], v, k)
         self.assertIn("Stop          \u20b9358.30  opening-range midpoint", text)
-        self.assertIn("Target        \u20b9370.05  1R (one times the risk)", text)
+        self.assertIn("Target        \u20b9370.10  1R (one times the risk)", text)
         self.assertIn("Risk a share  \u20b95.88 (1.61% of the entry)", text)
         self.assertIn("Reward:risk   1.0", text)
         self.assertIn("Flat by       15:15 IST", text)
@@ -300,7 +300,7 @@ class SkillDoc(unittest.TestCase):
         self.assertGreater(len(text.splitlines()), 60)
         self.assertEqual(text[text.index("## Safety"):], risk[risk.index("## Safety"):])
         low = " ".join(text.lower().split())
-        for must in ("before the entry", "a stop is a plan, not a guarantee", "day trading loses most people money", "/trader-timemachine", "/trader-budget", "longs only", "\u20b9358.30", "\u20b9370.05", "\u20b95.88", "375.95", "too tight to survive the spread", "tick", "15:15"):
+        for must in ("before the entry", "a stop is a plan, not a guarantee", "day trading loses most people money", "/trader-timemachine", "/trader-budget", "longs only", "\u20b9358.30", "\u20b9370.10", "\u20b95.88", "375.95", "too tight to survive the spread", "tick", "15:15"):
             self.assertIn(must, low)
         for never in ("\u2014", "tick " + "by tick", "real " + "time", "pro" + "fit"):
             self.assertNotIn(never, low)

@@ -142,7 +142,7 @@ def market_status(now_utc):
     local = to_ist(now_utc)
     d = local.date()
     ok, reason = trading_day(d)
-    st = {"now_new_york": local.strftime("%Y-%m-%d %H:%M"), "date": d.isoformat(),
+    st = {"now_ist": local.strftime("%Y-%m-%d %H:%M"), "date": d.isoformat(),
           "weekday": local.strftime("%A"), "calendar_known": d.year in CALENDAR_YEARS,
           "open": False, "reason": reason, "early_close": NSE_EARLY_CLOSE.get(d.isoformat())}
     s = session(d)
@@ -417,7 +417,7 @@ def evaluate(rules, quotes, status, state, now_utc):
         if typ == "opening_bell":
             if status["open"] and not _rang_today(rung.get(rid), today):
                 rings.append({"id": rid, "symbol": "", "message": "Opening bell: the NYSE is open (%s IST)%s."
-                              % (status["now_new_york"], (", early close at 1:00 p.m. today, "
+                              % (status["now_ist"], (", early close at 1:00 p.m. today, "
                                                           + status["early_close"]) if status.get("early_close") else "")})
                 rung[rid] = stamp
             continue
@@ -522,7 +522,7 @@ def cmd_clock(a):
     if a.json:
         print(json.dumps(st, indent=2))
     else:
-        print("IST %s (%s): NYSE %s, %s." % (st["now_new_york"], st["weekday"],
+        print("IST %s (%s): NYSE %s, %s." % (st["now_ist"], st["weekday"],
                                                   "OPEN" if st["open"] else "closed", st["reason"]))
         if st.get("opens"):
             print("Today's session: %s to %s%s." % (st["opens"], st["closes"],
@@ -580,7 +580,7 @@ def cmd_check(a):
         print(json.dumps({"market": status, "rings": rings, "errors": errors,
                           "quotes": {s: q["price"] for s, q in quotes.items()}}, indent=2))
     else:
-        print("NYSE %s (%s IST, %s)." % ("OPEN" if status["open"] else "closed", status["now_new_york"],
+        print("NYSE %s (%s IST, %s)." % ("OPEN" if status["open"] else "closed", status["now_ist"],
                                               status["reason"]))
         for r in rings:
             print("ALERT " + r["message"])

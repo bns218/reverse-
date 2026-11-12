@@ -27,13 +27,13 @@ PLAN = {"created_by": "trader-exit", "symbol": "DEMO", "side": "buy", "date": "2
         "entry": 364.18, "entry_time": "10:00 AM", "entry_bar": 8, "interval": "5m",
         "opening_range": {"high": 362.18, "low": 354.47, "minutes": 15},
         "stop": 358.3, "stop_rule": "or_mid", "stop_label": "opening-range midpoint",
-        "target": 370.05, "target_r": 1.0, "target_label": "1R (one times the risk)",
-        "risk_per_share": 5.88, "reward_risk": 1.0, "flat_by": "15:15"}
+        "target": 370.1, "target_r": 1.0, "target_label": "1R (one times the risk)",
+        "risk_per_share": 5.88, "reward_risk": 1.01, "flat_by": "15:15"}
 
 # fingerprints of the demo run (seed 19), pinned so a change in the algorithm or the random draws shows up
 SIM_BANDS = "e4d34fb7ffb4f673"
 SIM_PATHS = "7216874e68232016"
-SIM_TRADES = "c2a05339f9872342"
+SIM_TRADES = "bda0611fc56df021"
 SIM_HIST = {"lo": 352.63, "hi": 376.57,
             "bins": [105, 95, 157, 213, 247, 372, 416, 555, 664, 719, 764, 802, 795, 709, 704, 584, 488, 428,
                      344, 244, 185, 120, 79, 56]}
@@ -92,15 +92,15 @@ class Reel(unittest.TestCase):
         self.assertEqual(m["pool_sessions"], 57)           # 75-bar NSE sessions; NSE holidays are not in the data
         self.assertEqual(m["bars_left"], 63)
         self.assertEqual((m["pool_from"], m["pool_to"]), ("2026-07-27", "2026-10-16"))
-        self.assertEqual(m["p_target"], 0.2685)
+        self.assertEqual(m["p_target"], 0.2648)
         self.assertEqual(m["p_stop"], 0.2193)
-        self.assertEqual(m["p_neither"], 0.5122)
-        self.assertEqual(m["p_green"], 0.5246)
+        self.assertEqual(m["p_neither"], 0.5159)
+        self.assertEqual(m["p_green"], 0.5241)
         self.assertEqual(m["median_close"], 364.41)
         self.assertEqual(m["p5_close"], 356.1)
         self.assertEqual(m["p95_close"], 372.78)
         self.assertEqual(m["avg_R"], 0.05)
-        self.assertEqual(m["r_at_target"], 0.9983)         # 5.87 to the target on the 0.05 tick over a 5.88 risk
+        self.assertEqual(m["r_at_target"], 1.0068)         # 5.92 to the target (rounded up to the tick) over a 5.88 risk
 
     def test_bit_for_bit_with_the_reel_sim(self):
         m = self.doc["mc"]
@@ -113,8 +113,8 @@ class Reel(unittest.TestCase):
     def test_the_history_replay(self):
         h = self.doc["history"]
         self.assertEqual((h["sessions"], h["triggered"]), (57, 32))
-        self.assertEqual((h["target"], h["stop"], h["close"], h["green"]), (13, 15, 4, 14))
-        self.assertEqual(h["avg_R"], -0.075)
+        self.assertEqual((h["target"], h["stop"], h["close"], h["green"]), (12, 16, 4, 13))
+        self.assertEqual(h["avg_R"], -0.136)
         self.assertEqual(h["rule"], {"setup": "orb", "or_minutes": 15, "stop_rule": "or_mid", "target_r": 1.0})
         slim = [{"date": t["date"], "entry": t["entry"], "outcome": t["outcome"], "R": t["R"]} for t in h["trades"]]
         self.assertEqual(sha(slim), SIM_TRADES)
@@ -123,15 +123,17 @@ class Reel(unittest.TestCase):
                          ("2026-07-28", 307.97, 304.85, 311.1, "target"))
 
     def test_the_verdict(self):
-        self.assertEqual(self.doc["verdict"], "Leans toward the target: target first 26.9 % vs stop first 21.9 %.")
-        # ~1R breaks even at 50 % of the replays that hit one side; the demo's target got 55.0 %
+        self.assertEqual(self.doc["verdict"], "Close to a coin flip: target first 26.5 % vs stop first 21.9 %.")
+        # 1R breaks even at 50 % of the replays that hit one side; the demo's target got 54.7 %
         gap, share, even = tm.lean(self.doc["mc"])
-        self.assertEqual((round(share, 3), round(even, 3)), (0.55, 0.5))
+        self.assertEqual((round(share, 3), round(even, 2)), (0.547, 0.5))
         self.assertEqual(self.doc["verdict_notes"],
-                         ["51.2 % of the replays hit neither by 3:15 PM; the price at 3:15 PM decides those."])
-        # run to the 15:30 close instead and it is a coin flip
+                         ["51.6 % of the replays hit neither by 3:15 PM; the price at 3:15 PM decides those."])
+        self.assertEqual(self.doc["plan"]["target_r"], 1.0)        # 1.0068 on the tick is still "1R"
+        self.assertEqual((tm.nominal_r(1.0068), tm.nominal_r(2.0046), tm.nominal_r(1.33)), (1.0, 2.0, 1.33))
+        # run to the 15:30 close instead
         doc = machine(until="15:30")
-        self.assertEqual(doc["verdict"], "Close to a coin flip: target first 28.6 % vs stop first 23.5 %.")
+        self.assertEqual(doc["verdict"], "Close to a coin flip: target first 28.1 % vs stop first 23.5 %.")
         self.assertEqual((doc["mc"]["bars_left"], doc["mc"]["band_times"][-1]), (66, "15:30"))
 
     def test_bands_start_at_the_entry(self):
@@ -144,18 +146,18 @@ class Reel(unittest.TestCase):
     def test_the_plan_is_carried_through(self):
         p = self.doc["plan"]
         self.assertEqual((p["symbol"], p["entry"], p["stop"], p["target"], p["entry_bar"], p["entry_time"]),
-                         ("DEMO", 364.18, 358.3, 370.05, 8, "10:00 AM"))
+                         ("DEMO", 364.18, 358.3, 370.1, 8, "10:00 AM"))
         self.assertEqual((p["risk_per_share"], p["target_r"], p["flat_by"]), (5.88, 1.0, "15:15"))
         self.assertEqual(self.doc["warnings"], [])
 
     def test_the_text_report(self):
         text = "\n".join(tm.report(self.doc))
-        for line in ("DEMO buy, Monday 2026-10-19: entry 364.18 at 10:00 AM (bar 8), stop 358.30, target 370.05",
+        for line in ("DEMO buy, Monday 2026-10-19: entry 364.18 at 10:00 AM (bar 8), stop 358.30, target 370.10 (1R",
                      "10,000 replays", "63 five-minute bars", "seed 19", "57 full sessions",
-                     "target first   26.9 %", "stop first     21.9 %", "neither        51.2 %   still open at 3:15 PM",
-                     "green          52.5 %", "median 364.41, 90 % of replays between 356.10 and 372.78",
-                     "Average R: +0.050", "fired 32 times: 13 target, 15 stop, 4 neither. Average R -0.075",
-                     "Leans toward the target: target first 26.9 % vs stop first 21.9 %.\n51.2 % of the replays "
+                     "target first   26.5 %", "stop first     21.9 %", "neither        51.6 %   still open at 3:15 PM",
+                     "green          52.4 %", "median 364.41, 90 % of replays between 356.10 and 372.78",
+                     "Average R: +0.050", "fired 32 times: 12 target, 16 stop, 4 neither. Average R -0.136",
+                     "Close to a coin flip: target first 26.5 % vs stop first 21.9 %.\n51.6 % of the replays "
                      "hit neither by 3:15 PM; the price at 3:15 PM decides those.", "not a prediction",
                      "circuit limits", "--seed 19"):
             self.assertIn(line, text)
@@ -171,7 +173,7 @@ class Seeds(unittest.TestCase):
 
     def test_another_seed_gives_other_numbers(self):
         m = machine(seed=7)["mc"]
-        self.assertNotEqual((m["p_target"], m["p_stop"], m["median_close"]), (0.2685, 0.2193, 364.41))
+        self.assertNotEqual((m["p_target"], m["p_stop"], m["median_close"]), (0.2648, 0.2193, 364.41))
         self.assertAlmostEqual(m["p_target"] + m["p_stop"] + m["p_neither"], 1.0, places=6)
         self.assertNotEqual(sha(m["bands"]), SIM_BANDS)
 
@@ -354,7 +356,9 @@ class Plans(unittest.TestCase):
         # the history replay puts stops and targets on NSE's price-based ticks, like trader-exit
         self.assertEqual((tm.tick_away(358.325, True), tm.tick_away(358.325, False)), (358.3, 358.35))
         self.assertEqual((tm.tick_away(212.377, True), tm.tick_away(1475.3475, True)), (212.37, 1475.3))
-        self.assertEqual((tm.tick_near(370.06), tm.tick_near(370.075), tm.tick_near(7300.3)), (370.05, 370.1, 7300.5))
+        # an R target rounds away from the entry too, so the reward is never under R
+        self.assertEqual((tm.tick_beyond(370.06, True), tm.tick_beyond(7300.3, True)), (370.1, 7300.5))
+        self.assertEqual(tm.tick_beyond(358.32, False), 358.3)
         self.assertEqual([tm.tick_size(p) for p in (100, 250, 999.95, 1000, 5000, 10000, 25000)],
                          [0.01, 0.05, 0.05, 0.1, 0.5, 1.0, 5.0])
 
@@ -374,10 +378,10 @@ class Plans(unittest.TestCase):
         self.assertIn("History: skipped", "\n".join(tm.report(doc)))
 
     def test_a_sell_plan_mirrors_the_rules(self):
-        doc = machine(plan(side="sell", stop=370.05, target=358.3, stop_rule="or_high"), replays=2000)
+        doc = machine(plan(side="sell", stop=370.1, target=358.3, stop_rule="or_high"), replays=2000)
         m = doc["mc"]
         self.assertAlmostEqual(m["p_target"] + m["p_stop"] + m["p_neither"], 1.0, places=6)
-        self.assertAlmostEqual(m["r_at_target"], 1.0, places=2)
+        self.assertEqual(tm.nominal_r(m["r_at_target"]), 1.0)
         self.assertEqual(doc["history"]["rule"]["stop_rule"], "or_high")
         for t in doc["history"]["trades"]:
             self.assertTrue(t["target"] < t["entry"] < t["stop"], t)
@@ -521,8 +525,8 @@ class Cli(unittest.TestCase):
     def test_run_with_the_plan_end_to_end(self):
         code, text, err = run(["run", "--plan", self.plan, "--offline", DEMO, "--now", NOW, "--write", self.out])
         self.assertEqual(code, 0, err)
-        self.assertIn("target first   26.9 %", text)
-        self.assertIn("Leans toward the target: target first 26.9 % vs stop first 21.9 %.", text)
+        self.assertIn("target first   26.5 %", text)
+        self.assertIn("Close to a coin flip: target first 26.5 % vs stop first 21.9 %.", text)
         self.assertIn("Wrote %s." % self.out, text)
         self.assertIn("/trader-budget", text)
         with open(self.out) as fh:
@@ -530,9 +534,9 @@ class Cli(unittest.TestCase):
         self.assertEqual(sorted(k for k in ("plan", "mc", "history") if k in doc), ["history", "mc", "plan"])
         self.assertEqual(doc["created_by"], "trader-timemachine")
         self.assertEqual(doc["source"], "offline")
-        self.assertEqual((doc["mc"]["p_target"], doc["mc"]["avg_R"]), (0.2685, 0.05))
+        self.assertEqual((doc["mc"]["p_target"], doc["mc"]["avg_R"]), (0.2648, 0.05))
         self.assertEqual(sha(doc["mc"]["sample_paths"]), SIM_PATHS)
-        self.assertEqual((doc["history"]["triggered"], doc["history"]["avg_R"]), (32, -0.075))
+        self.assertEqual((doc["history"]["triggered"], doc["history"]["avg_R"]), (32, -0.136))
         self.assertEqual(doc["plan"]["from"], self.plan)
 
     def test_json_output(self):
@@ -541,18 +545,18 @@ class Cli(unittest.TestCase):
         doc = json.loads(text)
         self.assertEqual(doc["mc"]["p_stop"], 0.2193)
         self.assertNotIn("sample_paths", doc["mc"])
-        self.assertEqual(doc["verdict"][:23], "Leans toward the target")
+        self.assertEqual(doc["verdict"][:20], "Close to a coin flip")
         self.assertFalse(os.path.exists(self.out))
 
     def test_the_plan_as_flags_matches_the_file(self):
         code, text, err = run(["run", "--symbol", "demo", "--date", "2026-10-19", "--entry", "364.18",
-                               "--stop", "358.30", "--target", "370.05", "--entry-time", "10:00 AM",
+                               "--stop", "358.30", "--target", "370.10", "--entry-time", "10:00 AM",
                                "--until", "15:15", "--offline", DEMO, "--now", NOW, "--json"])
         self.assertEqual(code, 0, err)
         doc = json.loads(text)
-        self.assertEqual((doc["mc"]["p_target"], doc["mc"]["p_green"]), (0.2685, 0.5246))
+        self.assertEqual((doc["mc"]["p_target"], doc["mc"]["p_green"]), (0.2648, 0.5241))
         self.assertEqual(doc["plan"]["stop_rule"], "or_mid")
-        self.assertEqual((doc["history"]["target"], doc["history"]["stop"], doc["history"]["avg_R"]), (13, 15, -0.075))
+        self.assertEqual((doc["history"]["target"], doc["history"]["stop"], doc["history"]["avg_R"]), (12, 16, -0.136))
         code, _, err = run(["run", "--symbol", "DEMO", "--entry", "364.18", "--offline", DEMO])
         self.assertEqual(code, 1)
         self.assertIn("--stop", err)
@@ -591,13 +595,13 @@ class Cli(unittest.TestCase):
         self.assertEqual(code, 0)
         lines = text.splitlines()
         self.assertIn("2,000 replay paths from the 10:00 AM entry (seed 19)", lines[0])
-        self.assertTrue(any(l.startswith("   370.05 |") and l.endswith("  target") for l in lines))
+        self.assertTrue(any(l.startswith("   370.10 |") and l.endswith("  target") for l in lines))
         self.assertTrue(any(l.startswith("   358.30 |") and l.endswith("  stop") for l in lines))
         self.assertTrue(any(l.startswith("   364.18 |*") and l.endswith("  entry") for l in lines))
         self.assertIn("10:00", text)
         self.assertIn("3:15", text)
-        self.assertEqual(lines[-2:], ["Leans toward the target: target first 26.9 % vs stop first 21.9 %.",
-                                      "51.2 % of the replays hit neither by 3:15 PM; the price at 3:15 PM decides those."])
+        self.assertEqual(lines[-2:], ["Close to a coin flip: target first 26.5 % vs stop first 21.9 %.",
+                                      "51.6 % of the replays hit neither by 3:15 PM; the price at 3:15 PM decides those."])
         code, again, _ = run(["chart", "--plan", self.plan, "--offline", DEMO, "--now", NOW])
         self.assertEqual(again, text)
 
