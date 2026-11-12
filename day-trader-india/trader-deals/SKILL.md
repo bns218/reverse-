@@ -6,7 +6,7 @@ description: >-
   of at least Rs 10 crore in the block window), which NSE publishes with the
   buyer's and seller's names after the close. Alerts once per new deal,
   flags deals in stocks you watch or hold and deals by the funds, promoters
-  or investors you follow (trader/deals-watch.json). Replaces the US
+  or investors you follow (trader/deals-watch.json). Replaces the
   US Congress-trades tracker: India has no such disclosure for politicians, and
   this is the public record of who moved big money. Use when the user says
   "who's buying", "bulk deals", "block deals", "did any fund buy X",
